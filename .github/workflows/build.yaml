@@ -1,9 +1,13 @@
 name: build
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - 'v*'
+      - '*'
+  release:
+    types: [published]
 env:
   IS_STABLE: ${{ !contains(github.ref, '-') }}
 
@@ -11,6 +15,7 @@ jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - platform: android
@@ -78,6 +83,19 @@ jobs:
           channel: master
           flutter-version: 3.35.7
           cache: true
+
+      - name: Clean Flutter cache for yaml_writer (unix)
+        if: runner.os != 'Windows'
+        run: |
+          rm -rf ~/.pub-cache/git/yaml_writer-*
+          rm -rf ~/.pub-cache/git/cache/yaml_writer-*
+
+      - name: Clean Flutter cache for yaml_writer (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Remove-Item -Recurse -Force "$env:USERPROFILE\.pub-cache\git\yaml_writer-*" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "$env:USERPROFILE\.pub-cache\git\cache\yaml_writer-*" -ErrorAction SilentlyContinue
 
       - name: Get Flutter Dependency
         run: |
@@ -167,6 +185,16 @@ jobs:
         with:
           fetch-depth: 0
 
+
+      - name: Resolve release tag
+        id: ref
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Download
         uses: actions/download-artifact@v4
         with:
@@ -197,7 +225,7 @@ jobs:
       - name: Push to telegram
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ steps.ref.outputs.tag }}
           RUN_ID: ${{ github.run_id }}
         run: |
           python -m pip install --upgrade pip
@@ -206,11 +234,10 @@ jobs:
 
       - name: Patch release.md
         run: |
-          version=$(echo "${{ github.ref_name }}" | sed 's/^v//')
+          version=$(echo "${{ steps.ref.outputs.tag }}" | sed 's/^v//')
           sed "s|VERSION|$version|g" ./.github/release_template.md >> release.md
 
       - name: Generate sha256
-        if: env.IS_STABLE == 'true'
         run: |
           cd ./dist
           for file in $(find . -type f -not -name "*.sha256"); do
@@ -218,11 +245,12 @@ jobs:
           done  
 
       - name: Release
-        if: ${{ env.IS_STABLE == 'true' }}
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.ref.outputs.tag }}
           files: ./dist/*
           body_path: './release.md'
+          prerelease: ${{ env.IS_STABLE != 'true' }}
 
       - name: Create Fdroid Source Dir
         if: ${{ env.IS_STABLE == 'true' }}
@@ -243,6 +271,6 @@ jobs:
           user-name: 'github-actions[bot]'
           user-email: 'github-actions[bot]@users.noreply.github.com'
           target-branch: main
-          commit-message: Update from ${{ github.ref_name }}
+          commit-message: Update from ${{ steps.ref.outputs.tag }}
           target-directory: /tmp/
 

@@ -1,0 +1,52 @@
+name: android-test
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.0'
+          cache-dependency-path: |
+            core/go.sum
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.35.7
+          cache: true
+
+      - name: Setup Android NDK
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;28.0.13004108"
+          echo "ANDROID_NDK=$ANDROID_HOME/ndk/28.0.13004108" >> $GITHUB_ENV
+
+      - name: Get dependencies
+        run: |
+          flutter --version
+          flutter pub get
+
+      - name: Build Android
+        run: |
+          dart setup.dart android
+
+      - name: Upload Android Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 77net-android
+          path: ./dist
+          overwrite: true

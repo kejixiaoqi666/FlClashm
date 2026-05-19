@@ -8,7 +8,7 @@ class Net77Config {
 
   static const apiBaseUrl = String.fromEnvironment(
     'NET77_API_BASE_URL',
-    defaultValue: 'https://your-xboard-domain.com',
+    defaultValue: 'https://你的XBoard域名',
   );
 
   static const defaultCurrency = '¥';

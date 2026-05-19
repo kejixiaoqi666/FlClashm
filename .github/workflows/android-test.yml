@@ -28,12 +28,18 @@ jobs:
         with:
           channel: stable
           flutter-version: 3.35.7
-          cache: true
+          cache: false
 
       - name: Setup Android NDK
         run: |
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;28.0.13004108"
           echo "ANDROID_NDK=$ANDROID_HOME/ndk/28.0.13004108" >> $GITHUB_ENV
+
+      - name: Clean Flutter cache for yaml_writer
+        run: |
+          rm -f pubspec.lock
+          rm -rf ~/.pub-cache/git/yaml_writer-*
+          rm -rf ~/.pub-cache/git/cache/yaml_writer-*
 
       - name: Get dependencies
         run: |

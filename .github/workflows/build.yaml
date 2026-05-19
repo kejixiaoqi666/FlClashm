@@ -1,6 +1,7 @@
 name: build
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - 'v*'
@@ -11,6 +12,7 @@ jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - platform: android
@@ -70,14 +72,20 @@ jobs:
         with:
           channel: stable
           flutter-version: 3.35.7
-          cache: true
+          cache: false
       - name: Setup Flutter With Other
         if: startsWith(matrix.os, 'windows-11-arm') || startsWith(matrix.os, 'ubuntu-24.04-arm')
         uses: subosito/flutter-action@v2
         with:
           channel: master
           flutter-version: 3.35.7
-          cache: true
+          cache: false
+
+      - name: Clean Flutter cache for yaml_writer
+        run: |
+          rm -f pubspec.lock
+          rm -rf ~/.pub-cache/git/yaml_writer-*
+          rm -rf ~/.pub-cache/git/cache/yaml_writer-*
 
       - name: Get Flutter Dependency
         run: |
@@ -210,7 +218,6 @@ jobs:
           sed "s|VERSION|$version|g" ./.github/release_template.md >> release.md
 
       - name: Generate sha256
-        if: env.IS_STABLE == 'true'
         run: |
           cd ./dist
           for file in $(find . -type f -not -name "*.sha256"); do
@@ -218,11 +225,11 @@ jobs:
           done  
 
       - name: Release
-        if: ${{ env.IS_STABLE == 'true' }}
         uses: softprops/action-gh-release@v2
         with:
           files: ./dist/*
           body_path: './release.md'
+          prerelease: ${{ env.IS_STABLE != 'true' }}
 
       - name: Create Fdroid Source Dir
         if: ${{ env.IS_STABLE == 'true' }}

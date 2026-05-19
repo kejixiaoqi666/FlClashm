@@ -8,7 +8,7 @@ class Net77Config {
 
   static const apiBaseUrl = String.fromEnvironment(
     'NET77_API_BASE_URL',
-    defaultValue: 'https://你的XBoard域名',
+    defaultValue: 'https://flash.354873.xyz',
   );
 
   static const defaultCurrency = '¥';

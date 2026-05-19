@@ -5,6 +5,8 @@ on:
   push:
     tags:
       - 'v*'
+  release:
+    types: [published]
 env:
   IS_STABLE: ${{ !contains(github.ref, '-') }}
 
@@ -84,6 +86,11 @@ jobs:
       - name: Clean Flutter cache for yaml_writer
         run: |
           rm -f pubspec.lock
+          rm -rf ~/.pub-cache/git/yaml_writer-*
+          rm -rf ~/.pub-cache/git/cache/yaml_writer-*
+
+      - name: Clean Flutter cache for yaml_writer
+        run: |
           rm -rf ~/.pub-cache/git/yaml_writer-*
           rm -rf ~/.pub-cache/git/cache/yaml_writer-*
 
